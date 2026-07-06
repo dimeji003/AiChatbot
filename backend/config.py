@@ -5,7 +5,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class Config:
     SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "sterling-trust-bank-dev-key")
-    DEBUG = os.environ.get("FLASK_DEBUG", "1") == "1"
+    DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
 
     DATA_DIR = os.path.join(BASE_DIR, "data")
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "policies")
@@ -22,12 +22,18 @@ class Config:
 
     TICKET_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.55
 
-    CORS_ORIGINS = [
+    _default_origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3001",
     ]
+    _env_origins = os.environ.get("CORS_ORIGINS")
+    CORS_ORIGINS = (
+        [origin.strip() for origin in _env_origins.split(",") if origin.strip()]
+        if _env_origins
+        else _default_origins
+    )
 
 
 os.makedirs(Config.DATA_DIR, exist_ok=True)
