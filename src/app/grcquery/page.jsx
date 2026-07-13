@@ -100,12 +100,7 @@ export default function GRCQueryPage() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-            JD
-          </div>
-          <span className="text-base font-semibold text-slate-700 hidden sm:inline">John Doe</span>
-        </div>
+        
       </header>
 
       {/* INDEPENDENTLY SCROLLABLE WORKSPACE LAYOUT */}

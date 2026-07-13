@@ -71,9 +71,7 @@ export default function RequestsPage() {
           <span className="px-5 py-1.5 text-slate-600 font-medium text-sm rounded-full">GRC Co-Pilot</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-sm">LT</div>
-        </div>
+       
       </header>
 
       {/* CORE REQUESTS CONTENT CONTENT */}
