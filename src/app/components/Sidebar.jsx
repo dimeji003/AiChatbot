@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   XMarkIcon,
   HomeIcon,
@@ -15,6 +17,7 @@ import {
   CalendarDaysIcon,
   AdjustmentsHorizontalIcon,
 } from "@heroicons/react/24/outline";
+import { getUser, clearSession, ROLE_LABELS } from "../../lib/auth";
 
 const NAV_ITEMS = [
   { href: "/", label: "AI Chat", icon: HomeIcon },
@@ -31,6 +34,21 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar({ isOpen, setIsOpen }) {
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Reads localStorage on mount/open; not a synchronous derived-state update.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUser(getUser());
+  }, [isOpen]);
+
+  const handleLogout = () => {
+    clearSession();
+    setIsOpen(false);
+    router.push("/login");
+  };
+
   return (
     <>
       {/* Overlay */}
@@ -50,7 +68,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         }`}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-slate-700 px-6">
+        <div className="flex h-16 items-center justify-between border-b border-slate-700 px-6 shrink-0">
           <h2 className="text-lg font-bold">
             Security SOC
           </h2>
@@ -61,15 +79,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         </div>
 
         {/* User */}
-        <div className="border-b border-slate-800 px-6 py-4">
-          <p className="font-bold text-sm">Lawal Tumininu</p>
-          <p className="text-xs text-slate-400">
-            Administrator
-          </p>
-        </div>
+        {user && (
+          <div className="border-b border-slate-800 px-6 py-4 shrink-0">
+            <p className="font-bold text-sm">{user.name}</p>
+            <p className="text-xs text-slate-400">{ROLE_LABELS[user.role] || user.role}</p>
+          </div>
+        )}
 
         {/* Navigation */}
-        <nav className="mt-6 flex-1 px-4 space-y-2">
+        <nav className="mt-6 flex-1 min-h-0 overflow-y-auto px-4 space-y-2 custom-scrollbar">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -84,12 +102,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         </nav>
 
         {/* Logout */}
-        <button
-          className="mx-4 mb-6 flex items-center gap-3 rounded-lg px-4 py-3 text-slate-300 transition hover:bg-slate-800 hover:text-white"
-        >
-          <ArrowRightOnRectangleIcon className="h-5 w-5" />
-          Log Out
-        </button>
+        {user && (
+          <button
+            onClick={handleLogout}
+            className="mx-4 mb-6 flex items-center gap-3 rounded-lg px-4 py-3 text-slate-300 transition hover:bg-slate-800 hover:text-white shrink-0"
+          >
+            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            Log Out
+          </button>
+        )}
       </aside>
     </>
   );
