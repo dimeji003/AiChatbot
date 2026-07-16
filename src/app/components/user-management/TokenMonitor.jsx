@@ -1,31 +1,4 @@
-import { Clock3, ShieldCheck, KeyRound } from "lucide-react";
-
-const tokens = [
-  {
-    id: 1,
-    name: "Access Token",
-    remaining: "48 mins",
-    percentage: 80,
-    color: "bg-green-500",
-    text: "text-green-400",
-  },
-  {
-    id: 2,
-    name: "Refresh Token",
-    remaining: "5 Days",
-    percentage: 60,
-    color: "bg-cyan-500",
-    text: "text-cyan-400",
-  },
-  {
-    id: 3,
-    name: "API Session",
-    remaining: "12 hrs",
-    percentage: 35,
-    color: "bg-purple-500",
-    text: "text-purple-400",
-  },
-];
+import { KeyRound, Info } from "lucide-react";
 
 export default function TokenMonitor() {
   return (
@@ -34,7 +7,7 @@ export default function TokenMonitor() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-white">
-            Token Lifetime Monitor
+            Session Token Policy
           </h2>
 
           <p className="mt-1 text-sm text-gray-400">
@@ -47,47 +20,30 @@ export default function TokenMonitor() {
         </div>
       </div>
 
-      {/* Tokens */}
-      <div className="mt-8 space-y-6">
-        {tokens.map((token) => (
-          <div key={token.id}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-white">
-                  {token.name}
-                </h3>
-
-                <p className={`mt-1 text-sm ${token.text}`}>
-                  {token.remaining} remaining
-                </p>
-              </div>
-
-              <Clock3 className="h-4 w-4 text-gray-500" />
-            </div>
-
-            {/* Progress */}
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-800">
-              <div
-                className={`h-full rounded-full ${token.color}`}
-                style={{ width: `${token.percentage}%` }}
-              />
-            </div>
-          </div>
-        ))}
+      {/* Real policy facts */}
+      <div className="mt-8 space-y-4">
+        <div className="rounded-xl border border-gray-800 bg-[#0F172A] p-4">
+          <h3 className="text-sm font-medium text-white">Session Token</h3>
+          <p className="mt-1 text-sm text-gray-400">
+            Signed, stateless, expires 12 hours after login. There is no refresh token —
+            users re-authenticate after expiry.
+          </p>
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="mt-8 rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+      <div className="mt-8 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
         <div className="flex items-center gap-3">
-          <ShieldCheck className="h-5 w-5 text-green-400" />
+          <Info className="h-5 w-5 text-cyan-400" />
 
           <div>
             <p className="text-sm font-medium text-white">
-              Authentication Healthy
+              No per-session tracking
             </p>
 
             <p className="text-xs text-gray-400">
-              No tokens require immediate rotation.
+              Tokens aren&apos;t recorded server-side, so per-user session counts and forced
+              rotation aren&apos;t available in this build.
             </p>
           </div>
         </div>

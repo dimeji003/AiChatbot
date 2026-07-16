@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 
 import Sidebar from "../components/Sidebar";
+import { authFetch, useAuthGuard } from "../../lib/auth";
 
 import ActionCards from "../components/user-management/ActionCards";
+import CreateUserModal from "../components/user-management/CreateUserModal";
 import Header from "../components/user-management/Header";
 import LoginHistory from "../components/user-management/LoginHistory";
+import ManageUserModal from "../components/user-management/ManageUserModal";
 import ModuleAccessMatrix from "../components/user-management/ModuleAccessMatrix";
 import StakeholderMatrix from "../components/user-management/StakeholderMatrix";
 import StatsCards from "../components/user-management/StatsCards";
@@ -15,7 +18,37 @@ import TokenMonitor from "../components/user-management/TokenMonitor";
 import ViolationLog from "../components/user-management/ViolationLog";
 
 export default function UserManagement() {
+  const { user, checked } = useAuthGuard();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [users, setUsers] = useState([]);
+  const [usersError, setUsersError] = useState(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [manageTarget, setManageTarget] = useState(null);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await authFetch("/api/v1/users");
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load users.");
+      }
+      setUsers(data.users || []);
+      setUsersError(null);
+    } catch (err) {
+      setUsersError(err.message);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (checked) fetchUsers();
+  }, [checked, fetchUsers]);
+
+  if (!checked) return null;
 
   return (
     <>
@@ -51,11 +84,11 @@ export default function UserManagement() {
           {/* Right */}
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-cyan-500 flex items-center justify-center text-white font-semibold">
-              LT
+              {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
             </div>
 
             <span className="hidden md:block text-slate-300 font-medium">
-              Lawal Tumininu
+              {user.name}
             </span>
           </div>
 
@@ -65,20 +98,25 @@ export default function UserManagement() {
         <main className="max-w-[1650px] mx-auto px-8 py-8">
 
           <div className="mb-8">
-            <Header />
+            <Header onRegister={() => setShowCreateModal(true)} />
           </div>
 
           <div className="mb-8">
-            <StatsCards />
+            <StatsCards users={users} />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
 
             <div className="xl:col-span-8 space-y-8">
-              <StakeholderMatrix />
+              <StakeholderMatrix
+                users={users}
+                isLoading={isLoadingUsers}
+                error={usersError}
+                onManage={(u) => setManageTarget(u)}
+              />
               <ModuleAccessMatrix />
               <LoginHistory />
-              <ActionCards />
+              <ActionCards users={users} onCreateUser={() => setShowCreateModal(true)} />
             </div>
 
             <div className="xl:col-span-4 space-y-8">
@@ -91,6 +129,28 @@ export default function UserManagement() {
         </main>
 
       </div>
+
+      {showCreateModal && (
+        <CreateUserModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => {
+            setShowCreateModal(false);
+            fetchUsers();
+          }}
+        />
+      )}
+
+      {manageTarget && (
+        <ManageUserModal
+          user={manageTarget}
+          currentUserId={user.id}
+          onClose={() => setManageTarget(null)}
+          onChanged={() => {
+            setManageTarget(null);
+            fetchUsers();
+          }}
+        />
+      )}
     </>
   );
 }

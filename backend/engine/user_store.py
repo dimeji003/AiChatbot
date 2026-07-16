@@ -8,6 +8,7 @@ auditor, ciso.
 import json
 import os
 import threading
+import uuid
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -51,6 +52,7 @@ class UserStore:
             users = json.load(f)
         for u in users:
             u.setdefault("is_internal", True)
+            u.setdefault("active", True)
         return users
 
     def _write_all(self, users: list):
@@ -62,6 +64,16 @@ class UserStore:
             users = self._read_all()
         for u in users:
             if u["email"].lower() == email.lower() and check_password_hash(u["password_hash"], password):
+                if not u.get("active", True):
+                    return None
+                return {k: v for k, v in u.items() if k != "password_hash"}
+        return None
+
+    def get_by_email(self, email: str) -> dict | None:
+        with _lock:
+            users = self._read_all()
+        for u in users:
+            if u["email"].lower() == email.lower():
                 return {k: v for k, v in u.items() if k != "password_hash"}
         return None
 
@@ -86,6 +98,55 @@ class UserStore:
                 if u["id"] == user_id:
                     if "is_internal" in updates:
                         u["is_internal"] = bool(updates["is_internal"])
+                    if "active" in updates:
+                        u["active"] = bool(updates["active"])
+                    if "name" in updates and updates["name"]:
+                        u["name"] = updates["name"]
+                    if "role" in updates and updates["role"]:
+                        u["role"] = updates["role"]
+                    if "email" in updates and updates["email"]:
+                        u["email"] = updates["email"]
+                    found = u
+                    break
+            if found is None:
+                return None
+            self._write_all(users)
+        return {k: v for k, v in found.items() if k != "password_hash"}
+
+    def create(self, name: str, email: str, role: str, password: str, is_internal: bool = True) -> dict | None:
+        with _lock:
+            users = self._read_all()
+            if any(u["email"].lower() == email.lower() for u in users):
+                return None
+            user = {
+                "id": f"u-{uuid.uuid4().hex[:10]}",
+                "name": name,
+                "email": email,
+                "role": role,
+                "is_internal": is_internal,
+                "active": True,
+                "password_hash": generate_password_hash(password),
+            }
+            users.append(user)
+            self._write_all(users)
+        return {k: v for k, v in user.items() if k != "password_hash"}
+
+    def delete(self, user_id: str) -> bool:
+        with _lock:
+            users = self._read_all()
+            remaining = [u for u in users if u["id"] != user_id]
+            if len(remaining) == len(users):
+                return False
+            self._write_all(remaining)
+        return True
+
+    def set_password(self, user_id: str, new_password: str) -> dict | None:
+        with _lock:
+            users = self._read_all()
+            found = None
+            for u in users:
+                if u["id"] == user_id:
+                    u["password_hash"] = generate_password_hash(new_password)
                     found = u
                     break
             if found is None:

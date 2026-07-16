@@ -75,7 +75,8 @@ class AuditLogStore:
             "actor_type": actor_type,
         }
 
-    def list_recent(self, limit: int = 50, action_type: str = None, actor_id: str = None) -> list:
+    def list_recent(self, limit: int = 50, action_type: str = None, actor_id: str = None,
+                     category: str = None) -> list:
         conn = self._connect()
         try:
             clauses = []
@@ -86,6 +87,9 @@ class AuditLogStore:
             if actor_id:
                 clauses.append("actor_id = ?")
                 params.append(actor_id)
+            if category:
+                clauses.append("category = ?")
+                params.append(category)
             where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
             params.append(limit)
             rows = conn.execute(

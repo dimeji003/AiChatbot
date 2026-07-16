@@ -1,8 +1,6 @@
 "use client";
 
-
-
-export default function Header() {
+export default function Header({ onRegister }) {
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
       <div>
@@ -21,7 +19,10 @@ export default function Header() {
         </p>
       </div>
 
-      <button className="bg-cyan-500 hover:bg-cyan-600 px-6 py-3 rounded-xl text-white font-semibold shadow-lg shadow-cyan-500/20 transition">
+      <button
+        onClick={onRegister}
+        className="bg-cyan-500 hover:bg-cyan-600 px-6 py-3 rounded-xl text-white font-semibold shadow-lg shadow-cyan-500/20 transition"
+      >
         + Register User
       </button>
     </div>

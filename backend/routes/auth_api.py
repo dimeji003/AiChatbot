@@ -3,6 +3,7 @@ Authentication API: login and current-session lookup.
 """
 from flask import Blueprint, current_app, jsonify, request
 
+from engine.audit_log import get_audit_log_store
 from engine.auth import get_current_user, issue_token, login_required
 from engine.user_store import ROLE_LABELS, get_user_store
 
@@ -30,10 +31,21 @@ def login():
 
     store = get_user_store(current_app.config["USER_STORE_PATH"])
     user = store.authenticate(email, password)
+    audit_log = get_audit_log_store(current_app.config["AUDIT_LOG_DB_PATH"])
+
     if user is None:
+        existing = store.get_by_email(email)
+        audit_log.record(
+            existing or {"id": None, "name": email, "role": None},
+            "login_failed",
+            "Inactive account login attempt" if existing and not existing.get("active", True)
+            else "Invalid email or password",
+            category="auth",
+        )
         return jsonify({"error": "Invalid email or password."}), 401
 
     token = issue_token(user["id"])
+    audit_log.record(user, "login_success", f"{user['name']} logged in", category="auth")
     return jsonify({"token": token, "user": _serialize_user(user)}), 200
 
 

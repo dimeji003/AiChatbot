@@ -31,6 +31,7 @@ export const PAGE_ACCESS = {
   "/securityposture": ["ciso", "auditor", "governance", "defense", "attack_security"],
   "/exploitplaybook": ["attack_security", "defense", "ciso"],
   "/pentestscheduler": ["attack_security", "ciso"],
+  "/usermanagement": ["ciso"],
 };
 
 export function getDefaultPageForRole(role) {

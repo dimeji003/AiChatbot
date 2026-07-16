@@ -1,3 +1,6 @@
+# This file is not meant to be combined with the repository root .gitignore.
+# Backend-specific ignores belong here; frontend/Next.js ignores stay in the root .gitignore.
+
 # ---- Python ----
 __pycache__/
 *.py[cod]

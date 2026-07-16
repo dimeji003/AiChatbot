@@ -316,5 +316,6 @@ def audit_log_feed():
     audit_log = get_audit_log_store(current_app.config["AUDIT_LOG_DB_PATH"])
     limit = request.args.get("limit", default=50, type=int)
     action_type = request.args.get("action_type")
-    records = audit_log.list_recent(limit=limit, action_type=action_type)
+    category = request.args.get("category")
+    records = audit_log.list_recent(limit=limit, action_type=action_type, category=category)
     return jsonify({"audit_log": records, "count": len(records)}), 200

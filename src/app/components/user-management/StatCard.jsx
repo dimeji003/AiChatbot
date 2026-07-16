@@ -27,15 +27,13 @@ export default function StatCard({
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
-        <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
-          {trend}
-        </span>
-
-        <span className="text-xs text-gray-500">
-          vs last month
-        </span>
-      </div>
+      {trend && (
+        <div className="mt-6 flex items-center justify-between">
+          <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
+            {trend}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,38 +1,24 @@
 "use client";
 
-import { Search, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 
-const stakeholders = [
-  {
-    id: 1,
-    name: "IT Administrator",
-    role: "Administrator",
-    department: "Technology",
-    status: "Active",
-    access: "Full Access",
-    lastActive: "2 mins ago",
-  },
-  {
-    id: 2,
-    name: "Compliance Officer",
-    role: "Manager",
-    department: "Compliance",
-    status: "Active",
-    access: "Read & Write",
-    lastActive: "12 mins ago",
-  },
-  {
-    id: 3,
-    name: "Finance Department",
-    role: "Department",
-    department: "Finance",
-    status: "Offline",
-    access: "Read Only",
-    lastActive: "1 hour ago",
-  },
-];
+import { ROLE_LABELS } from "../../../lib/auth";
 
-export default function StakeholderMatrix() {
+export default function StakeholderMatrix({ users = [], isLoading, error, onManage }) {
+  const [tab, setTab] = useState("internal");
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    return users
+      .filter((u) => (tab === "internal" ? u.is_internal : !u.is_internal))
+      .filter((u) => {
+        const q = query.trim().toLowerCase();
+        if (!q) return true;
+        return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+      });
+  }, [users, tab, query]);
+
   return (
     <div className="rounded-2xl border border-gray-800 bg-[#111827] p-6">
       {/* Header */}
@@ -50,11 +36,21 @@ export default function StakeholderMatrix() {
         <div className="flex items-center gap-3">
           {/* Tabs */}
           <div className="flex rounded-lg bg-[#1F2937] p-1">
-            <button className="rounded-md bg-cyan-500 px-4 py-2 text-sm font-medium text-white">
+            <button
+              onClick={() => setTab("internal")}
+              className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                tab === "internal" ? "bg-cyan-500 text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
               Internal
             </button>
 
-            <button className="rounded-md px-4 py-2 text-sm text-gray-400 hover:text-white">
+            <button
+              onClick={() => setTab("external")}
+              className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                tab === "external" ? "bg-cyan-500 text-white" : "text-gray-400 hover:text-white"
+              }`}
+            >
               External
             </button>
           </div>
@@ -65,6 +61,8 @@ export default function StakeholderMatrix() {
 
             <input
               type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Search..."
               className="rounded-lg border border-gray-700 bg-[#1F2937] py-2 pl-10 pr-4 text-sm text-white outline-none placeholder:text-gray-500 focus:border-cyan-500"
             />
@@ -72,9 +70,15 @@ export default function StakeholderMatrix() {
         </div>
       </div>
 
+      {error && <p className="mt-4 text-sm font-medium text-red-400">{error}</p>}
+      {isLoading && <p className="mt-4 text-sm text-gray-400">Loading stakeholders...</p>}
+      {!isLoading && !error && filtered.length === 0 && (
+        <p className="mt-4 text-sm text-gray-400">No {tab} stakeholders found.</p>
+      )}
+
       {/* Stakeholders */}
       <div className="mt-6 space-y-4">
-        {stakeholders.map((user) => (
+        {filtered.map((user) => (
           <div
             key={user.id}
             className="flex items-center justify-between rounded-xl border border-gray-800 bg-[#0F172A] p-4 transition hover:border-cyan-500/40"
@@ -94,38 +98,37 @@ export default function StakeholderMatrix() {
                 </h3>
 
                 <p className="text-sm text-gray-400">
-                  {user.department}
+                  {user.email}
                 </p>
               </div>
             </div>
 
             <div className="hidden lg:block">
               <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
-                {user.role}
+                {ROLE_LABELS[user.role] || user.role}
               </span>
             </div>
 
             <div className="hidden xl:block">
               <span
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  user.status === "Active"
+                  user.active !== false
                     ? "bg-green-500/10 text-green-400"
                     : "bg-red-500/10 text-red-400"
                 }`}
               >
-                {user.status}
+                {user.active !== false ? "Active" : "Deactivated"}
               </span>
             </div>
 
             <div className="hidden xl:block text-sm text-gray-300">
-              {user.access}
+              {user.is_internal ? "Internal" : "External"}
             </div>
 
-            <div className="hidden xl:block text-sm text-gray-500">
-              {user.lastActive}
-            </div>
-
-            <button className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-white transition hover:border-cyan-500 hover:bg-cyan-500">
+            <button
+              onClick={() => onManage(user)}
+              className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-white transition hover:border-cyan-500 hover:bg-cyan-500"
+            >
               Manage
             </button>
           </div>

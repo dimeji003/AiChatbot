@@ -68,8 +68,11 @@ export default function ModuleAccessMatrix() {
           </p>
         </div>
 
-        <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-400">
-          RBAC
+        <span
+          className="rounded-full bg-gray-700/40 px-3 py-1 text-xs font-medium text-gray-400"
+          title="Local preview only — module-level RBAC isn't persisted server-side yet."
+        >
+          Preview only
         </span>
       </div>
 
@@ -145,13 +148,15 @@ export default function ModuleAccessMatrix() {
       </div>
 
       {/* Footer */}
-      <div className="mt-8 flex flex-wrap justify-end gap-3">
-        <button className="rounded-lg border border-gray-700 px-5 py-2 text-sm text-gray-300 transition hover:border-white">
+      <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+        <p className="mr-auto text-xs text-gray-500">
+          Toggles here are local-only and not saved — this module isn't wired to the backend yet.
+        </p>
+        <button
+          onClick={() => setPermissions(modules)}
+          className="rounded-lg border border-gray-700 px-5 py-2 text-sm text-gray-300 transition hover:border-white"
+        >
           Reset
-        </button>
-
-        <button className="rounded-lg bg-cyan-500 px-5 py-2 text-sm font-medium text-white transition hover:bg-cyan-400">
-          Save Changes
         </button>
       </div>
     </div>
