@@ -19,7 +19,7 @@ export const ROLE_LABELS = {
   ciso: "CISO",
 };
 
-// Per-page access matrix. "/" (AI Chat) is reachable by every authenticated role.
+// Per-page access matrix. "/" (AI Chat) is reachable by every authenticated role
 export const PAGE_ACCESS = {
   "/": ["user", "service_desk_officer", "governance", "defense", "attack_security", "auditor", "ciso"],
   "/requests": ["user", "ciso"],
