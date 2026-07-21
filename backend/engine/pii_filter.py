@@ -11,6 +11,7 @@ _PHONE_RE = re.compile(r"\b(?:\+?\d{1,3}[ -]?)?(?:\(\d{2,4}\)[ -]?)?\d{3}[ -]?\d
 _PASSWORD_RE = re.compile(
     r"(?i)\b(password|pwd|passcode|pin)\s*[:=]\s*\S+"
 )
+_EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 
 
 def _luhn_valid(digits: str) -> bool:
@@ -45,6 +46,9 @@ def redact(text: str) -> tuple[str, int]:
     count += working.count("[REDACTED]")
 
     working, n = _PASSWORD_RE.subn(lambda m: f"{m.group(1)}: [REDACTED]", working)
+    count += n
+
+    working, n = _EMAIL_RE.subn("[REDACTED]", working)
     count += n
 
     working, n = _PHONE_RE.subn("[REDACTED]", working)

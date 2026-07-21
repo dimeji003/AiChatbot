@@ -51,12 +51,24 @@ def create_ticket():
     classification = classifier.classify(ticket["clean_text"])
     incident = infer_incident(ticket["clean_text"], classification["label"])
 
+    # A matched incident rule (e.g. "ransom" -> Ransomware) is authoritative
+    # over the generic ML classifier's label: it's what actually routes the
+    # ticket to the right stream (Defence, Attack Security, ...).
+    category = incident["stream"] if incident["incident_type"] else classification["label"]
+
     sla_store = get_sla_config_store(current_app.config["SLA_CONFIG_STORE_PATH"])
     staff_type = "internal" if user.get("is_internal", True) else "external"
     deadline = sla_store.compute_deadline(incident["urgency"], staff_type, ticket["created_at"])
 
+    life_doc_store = get_life_doc_store(current_app.config["LIFE_DOC_DB_PATH"])
+    similar_resolutions = life_doc_store.find_similar(ticket["clean_text"])
+    # Learn from history: if this incident closely matches a previously solved
+    # one in the same stream, resolve it immediately instead of escalating to
+    # a human reviewer.
+    best_match = life_doc_store.find_best_match(ticket["clean_text"], category=category)
+
     ticket.update({
-        "category": classification["label"],
+        "category": category,
         "confidence": classification["confidence"],
         "needs_human_review": classification["needs_human_review"],
         "classification_scores": classification["scores"],
@@ -69,7 +81,21 @@ def create_ticket():
         "triage_footprint": [],
         "nudges": [],
         "user_notified": False,
+        "auto_resolved": False,
     })
+
+    if best_match:
+        ticket.update({
+            "status": "CLOSED",
+            "needs_human_review": False,
+            "resolution_text": best_match["resolution_text"],
+            "approved": True,
+            "reviewer": "AI Auto-Resolution",
+            "auto_resolved": True,
+            "auto_resolved_from": best_match["ticket_id"],
+            "auto_resolved_confidence": best_match["match_score"],
+            "life_doc_updated": True,
+        })
 
     store = get_ticket_store(current_app.config["TICKET_STORE_PATH"])
     store.add(ticket)
@@ -94,8 +120,25 @@ def create_ticket():
         actor_type="system",
     )
 
-    life_doc_store = get_life_doc_store(current_app.config["LIFE_DOC_DB_PATH"])
-    similar_resolutions = life_doc_store.find_similar(ticket["clean_text"])
+    if best_match:
+        life_doc_store.append_resolution(
+            ticket_id=ticket["ticket_id"],
+            resolution_text=best_match["resolution_text"],
+            ticket_title=ticket["clean_text"][:120],
+            category=category,
+            reviewer="AI Auto-Resolution",
+        )
+        audit_log.record(
+            actor=user,
+            action_type="auto_resolved",
+            category=category,
+            ticket_id=ticket["ticket_id"],
+            summary=(
+                f"Auto-resolved {ticket['ticket_id']} from prior resolution of "
+                f"{best_match['ticket_id']} (confidence {best_match['match_score']})"
+            ),
+            actor_type="system",
+        )
 
     action_script = generate_action_script(
         ticket["category"], ticket["mitre_tags"], ticket["ticket_id"]

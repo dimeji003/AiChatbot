@@ -6,6 +6,45 @@ import Sidebar from '../components/Sidebar';
 import HeaderTabs from '../components/HeaderTabs';
 import { authFetch, useAuthGuard } from '../../lib/auth';
 
+function formatTrend(trendPct) {
+  if (trendPct > 0) return { label: `+${trendPct}% this month`, tone: "up" };
+  if (trendPct < 0) return { label: `${trendPct}% this month`, tone: "down" };
+  return { label: "0% this month", tone: "flat" };
+}
+
+function FrameworkScoreCard({ framework }) {
+  const isCompliant = framework.status === "Compliant";
+  const barColor = isCompliant ? "bg-emerald-500" : "bg-amber-500";
+  const trend = formatTrend(framework.trend_pct);
+  const trendColor =
+    trend.tone === "up" ? "text-emerald-600"
+    : trend.tone === "down" ? "text-red-600"
+    : "text-slate-400";
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-bold text-slate-900 text-base">{framework.name}</p>
+          <p className="text-slate-400 text-xs mt-0.5">Controls: {framework.controls_covered}/{framework.total_controls}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-3xl font-black text-slate-900 leading-none">{framework.percent}%</p>
+          <span className={`inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+            isCompliant ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+          }`}>
+            {isCompliant ? "✓ Compliant" : "⚠ Partial"}
+          </span>
+        </div>
+      </div>
+      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-4">
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${framework.percent}%` }} />
+      </div>
+      <p className={`text-xs font-semibold mt-2 ${trendColor}`}>{trend.label}</p>
+    </div>
+  );
+}
+
 export default function SecurityPosturePage() {
   const { user, checked } = useAuthGuard();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,6 +52,8 @@ export default function SecurityPosturePage() {
   const [error, setError] = useState(null);
   const [report, setReport] = useState(null);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [frameworks, setFrameworks] = useState(null);
+  const [frameworksForbidden, setFrameworksForbidden] = useState(false);
 
   const fetchPosture = useCallback(async () => {
     try {
@@ -26,9 +67,27 @@ export default function SecurityPosturePage() {
     }
   }, []);
 
+  const fetchFrameworks = useCallback(async () => {
+    try {
+      const response = await authFetch("/api/v1/compliance-scoreboard/frameworks");
+      if (response.status === 403) {
+        setFrameworksForbidden(true);
+        return;
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to load framework compliance.");
+      setFrameworks(data.frameworks || []);
+    } catch {
+      // Non-critical; the rest of the scoreboard still renders.
+    }
+  }, []);
+
   useEffect(() => {
-    if (checked) fetchPosture();
-  }, [checked, fetchPosture]);
+    if (checked) {
+      fetchPosture();
+      fetchFrameworks();
+    }
+  }, [checked, fetchPosture, fetchFrameworks]);
 
   const compileReport = async () => {
     setIsCompiling(true);
@@ -74,6 +133,23 @@ export default function SecurityPosturePage() {
           >
             {isCompiling ? "Compiling..." : "Compile Compliance Report"}
           </button>
+        </div>
+
+        {/* Framework Compliance */}
+        <div className="mb-8">
+          <h2 className="text-lg font-bold text-slate-900 mb-1">Framework Compliance</h2>
+          <p className="text-slate-400 text-sm mb-4">Coverage against each regulatory/security framework&apos;s control set</p>
+          {frameworksForbidden ? (
+            <p className="text-slate-400 text-sm font-medium">Framework compliance data isn&apos;t available for your role.</p>
+          ) : !frameworks ? (
+            <p className="text-slate-400 text-sm font-medium">Loading framework compliance...</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {frameworks.map((framework) => (
+                <FrameworkScoreCard key={framework.key} framework={framework} />
+              ))}
+            </div>
+          )}
         </div>
 
         {error && <p className="text-red-600 font-semibold">{error}</p>}

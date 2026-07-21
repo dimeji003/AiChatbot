@@ -100,6 +100,145 @@ BASELINE_CLAUSES = [
     },
 ]
 
+# Per-framework benchmark: total control count each framework is scored against
+# on the Compliance Scoreboard, independent of how many sample clauses are
+# authored below for gap-detection. The framework provides the benchmark size;
+# uploaded policies determine how much of it is actually covered.
+FRAMEWORK_META = {
+    "iso27001": {"name": "ISO 27001", "total_controls": 163},
+    "gdpr": {"name": "GDPR", "total_controls": 85},
+    "soc2": {"name": "SOC 2 Type II", "total_controls": 120},
+    "nist_csf": {"name": "NIST CSF", "total_controls": 82},
+    "pcidss": {"name": "PCI-DSS", "total_controls": 78},
+    "ndpr": {"name": "NDPR", "total_controls": 70},
+}
+
+# Representative baseline clauses per framework, used the same way the
+# NDPA/CBN baseline above is: uploaded policies are TF-IDF-matched against
+# these to compute coverage.
+FRAMEWORK_BASELINE_CLAUSES = [
+    {
+        "source": "ISO 27001", "clause": "A.5.1", "framework": "iso27001",
+        "text": "The organization shall define, approve, and communicate a set of information security "
+                "policies, reviewed at planned intervals or when significant changes occur.",
+    },
+    {
+        "source": "ISO 27001", "clause": "A.8.1", "framework": "iso27001",
+        "text": "Information assets associated with information and information processing facilities "
+                "shall be identified, and an inventory of these assets shall be maintained.",
+    },
+    {
+        "source": "ISO 27001", "clause": "A.9.2", "framework": "iso27001",
+        "text": "A formal user access provisioning process shall be implemented to assign or revoke "
+                "access rights for all user types to all systems and services.",
+    },
+    {
+        "source": "ISO 27001", "clause": "A.12.6", "framework": "iso27001",
+        "text": "Information about technical vulnerabilities of information systems shall be obtained "
+                "in a timely fashion, and the organization's exposure to such vulnerabilities evaluated.",
+    },
+    {
+        "source": "GDPR", "clause": "Article 5", "framework": "gdpr",
+        "text": "Personal data shall be processed lawfully, fairly, and in a transparent manner, and "
+                "collected for specified, explicit, and legitimate purposes only.",
+    },
+    {
+        "source": "GDPR", "clause": "Article 17", "framework": "gdpr",
+        "text": "The data subject shall have the right to obtain erasure of personal data concerning "
+                "them without undue delay where the data is no longer necessary for its original purpose.",
+    },
+    {
+        "source": "GDPR", "clause": "Article 32", "framework": "gdpr",
+        "text": "The controller and processor shall implement appropriate technical and organizational "
+                "measures to ensure a level of security appropriate to the risk, including encryption.",
+    },
+    {
+        "source": "GDPR", "clause": "Article 33", "framework": "gdpr",
+        "text": "In the case of a personal data breach, the controller shall notify the competent "
+                "supervisory authority without undue delay and, where feasible, within 72 hours.",
+    },
+    {
+        "source": "SOC 2", "clause": "CC6.1", "framework": "soc2",
+        "text": "The entity implements logical access security software, infrastructure, and "
+                "architectures over protected information assets to protect them from security events.",
+    },
+    {
+        "source": "SOC 2", "clause": "CC7.2", "framework": "soc2",
+        "text": "The entity monitors system components and the operation of controls to detect "
+                "anomalies indicative of security events and evaluates them to determine impact.",
+    },
+    {
+        "source": "SOC 2", "clause": "CC8.1", "framework": "soc2",
+        "text": "The entity authorizes, designs, develops, configures, documents, tests, approves, and "
+                "implements changes to infrastructure, data, software, and procedures.",
+    },
+    {
+        "source": "SOC 2", "clause": "A1.2", "framework": "soc2",
+        "text": "The entity authorizes, designs, develops, and implements environmental protections, "
+                "software, data backup processes, and recovery infrastructure to meet availability commitments.",
+    },
+    {
+        "source": "NIST CSF", "clause": "ID.AM", "framework": "nist_csf",
+        "text": "Physical devices, systems, software platforms, and applications within the "
+                "organization shall be inventoried and managed consistent with their relative importance.",
+    },
+    {
+        "source": "NIST CSF", "clause": "PR.AC", "framework": "nist_csf",
+        "text": "Access to physical and logical assets and associated facilities shall be limited to "
+                "authorized users, processes, and devices, and managed consistent with assessed risk.",
+    },
+    {
+        "source": "NIST CSF", "clause": "DE.CM", "framework": "nist_csf",
+        "text": "The information system and assets shall be monitored to identify cybersecurity events "
+                "and verify the effectiveness of protective measures.",
+    },
+    {
+        "source": "NIST CSF", "clause": "RS.RP", "framework": "nist_csf",
+        "text": "Response processes and procedures shall be executed and maintained to ensure timely "
+                "response to detected cybersecurity incidents.",
+    },
+    {
+        "source": "PCI-DSS", "clause": "Req 3", "framework": "pcidss",
+        "text": "Stored cardholder data shall be protected using encryption, truncation, masking, or "
+                "hashing, with cryptographic keys protected against disclosure and misuse.",
+    },
+    {
+        "source": "PCI-DSS", "clause": "Req 8", "framework": "pcidss",
+        "text": "All users shall be assigned a unique ID before allowing access to system components "
+                "or cardholder data, and multi-factor authentication shall be implemented.",
+    },
+    {
+        "source": "PCI-DSS", "clause": "Req 10", "framework": "pcidss",
+        "text": "All access to network resources and cardholder data shall be tracked and monitored, "
+                "with audit logs retained for at least one year.",
+    },
+    {
+        "source": "PCI-DSS", "clause": "Req 11", "framework": "pcidss",
+        "text": "Security systems and processes shall be tested regularly, including quarterly "
+                "vulnerability scans and periodic penetration testing.",
+    },
+    {
+        "source": "NDPR", "clause": "Article 2.1", "framework": "ndpr",
+        "text": "Personal data shall be collected and processed in accordance with specific, "
+                "legitimate, and lawful purposes consented to by the data subject.",
+    },
+    {
+        "source": "NDPR", "clause": "Article 2.6", "framework": "ndpr",
+        "text": "The data controller shall, within 72 hours of becoming aware of a data breach, "
+                "notify the National Information Technology Development Agency.",
+    },
+    {
+        "source": "NDPR", "clause": "Article 2.7", "framework": "ndpr",
+        "text": "Every data controller shall conduct a data protection impact assessment prior to any "
+                "processing operation likely to result in high risk to the rights of a data subject.",
+    },
+    {
+        "source": "NDPR", "clause": "Article 3.1", "framework": "ndpr",
+        "text": "A data controller shall not transfer personal data to a foreign country unless that "
+                "country ensures an adequate level of protection for the data.",
+    },
+]
+
 
 def extract_text_from_pdf(file_path: str) -> str:
     try:
@@ -162,7 +301,8 @@ class GRCCoPilot:
             corpus = [c for c in corpus if c["framework"] == framework or c["framework"] == "uploaded"]
         return corpus
 
-    def detect_gaps(self, coverage_threshold: float = 0.12, include_test_data: bool = True) -> list:
+    def detect_gaps(self, coverage_threshold: float = 0.12, include_test_data: bool = True,
+                     framework: str = None) -> list:
         """
         For each baseline regulatory clause, checks whether any uploaded policy
         chunk substantively covers it (cosine similarity above threshold). Any
@@ -171,7 +311,16 @@ class GRCCoPilot:
 
         `include_test_data=False` excludes fake/sample policies uploaded to
         exercise the scoreboard from a real compliance-gap calculation.
+
+        `framework`, when set to one of `FRAMEWORK_META`'s keys, scopes the
+        baseline to that framework's clause bank instead of the default
+        NDPA/CBN baseline (`framework=None`, existing behavior).
         """
+        baseline = (
+            [c for c in FRAMEWORK_BASELINE_CLAUSES if c["framework"] == framework]
+            if framework else BASELINE_CLAUSES
+        )
+
         pool = self.uploaded_policies if include_test_data else [
             p for p in self.uploaded_policies if not p.get("is_test_data")
         ]
@@ -185,11 +334,11 @@ class GRCCoPilot:
                     "best_coverage_score": 0.0,
                     "covered": False,
                 }
-                for clause in BASELINE_CLAUSES
+                for clause in baseline
             ]
 
         policy_texts = [p["text"] for p in pool]
-        baseline_texts = [c["text"] for c in BASELINE_CLAUSES]
+        baseline_texts = [c["text"] for c in baseline]
         vectorizer = TfidfVectorizer(lowercase=True, stop_words="english", ngram_range=(1, 2))
         matrix = vectorizer.fit_transform(baseline_texts + policy_texts)
 
@@ -198,7 +347,7 @@ class GRCCoPilot:
         similarities = cosine_similarity(baseline_vectors, policy_vectors)
 
         gaps = []
-        for clause, scores in zip(BASELINE_CLAUSES, similarities):
+        for clause, scores in zip(baseline, similarities):
             best_score = round(float(scores.max()), 4) if len(scores) else 0.0
             gaps.append({
                 "source": clause["source"],
@@ -210,11 +359,12 @@ class GRCCoPilot:
             })
         return gaps
 
-    def compliance_score(self, coverage_threshold: float = 0.12) -> dict:
+    def compliance_score(self, coverage_threshold: float = 0.12, framework: str = None) -> dict:
         """Rolls detect_gaps() up into a single compliance scoreboard score:
         percentage of baseline regulatory clauses adequately covered by the
         organisation's uploaded (non-test) policies."""
-        gaps = self.detect_gaps(coverage_threshold=coverage_threshold, include_test_data=False)
+        gaps = self.detect_gaps(coverage_threshold=coverage_threshold, include_test_data=False,
+                                 framework=framework)
         total = len(gaps)
         covered = sum(1 for g in gaps if g["covered"])
         uncovered = total - covered
@@ -224,6 +374,29 @@ class GRCCoPilot:
             "uncovered": uncovered,
             "total": total,
         }
+
+    def all_framework_scores(self, coverage_threshold: float = 0.12) -> list:
+        """
+        Compliance Scoreboard per-framework breakdown: for each framework in
+        FRAMEWORK_META, computes real coverage (policies determine the score)
+        against that framework's fixed benchmark control count (the framework
+        provides the benchmark).
+        """
+        results = []
+        for key, meta in FRAMEWORK_META.items():
+            score = self.compliance_score(coverage_threshold=coverage_threshold, framework=key)
+            total_controls = meta["total_controls"]
+            percent = score["score_pct"]
+            controls_covered = round(total_controls * percent / 100)
+            results.append({
+                "key": key,
+                "name": meta["name"],
+                "percent": percent,
+                "controls_covered": controls_covered,
+                "total_controls": total_controls,
+                "status": "Compliant" if percent >= 80 else "Partial",
+            })
+        return results
 
     def query(self, question: str, framework: str = "all", top_k: int = 5) -> list:
         corpus = self._corpus(framework)

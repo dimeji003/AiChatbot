@@ -8,7 +8,21 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
 from .log_parser import extract_mitre_tags
+
+# Minimum cosine similarity (TF-IDF, over past ticket titles within the same
+# category) required before a new incident is auto-resolved from a prior
+# resolution instead of being escalated to a human reviewer. Calibrated for
+# short, informally-phrased ticket text with unigram TF-IDF (bigrams
+# fragment near-identical paraphrases into unrelated feature vectors and
+# under-score them, e.g. "workstation files encrypted..." vs "laptop files
+# got encrypted..." scored 0.31 with bigrams but 0.50 with unigrams only).
+# This is a lexical-overlap heuristic, not true semantic similarity — a real
+# embedding model would score confident paraphrases far higher.
+AUTO_RESOLVE_MIN_SCORE = 0.4
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS life_documents (
@@ -94,6 +108,47 @@ class LifeDocumentStore:
 
         scored.sort(key=lambda pair: pair[0], reverse=True)
         return [item for _, item in scored[:limit]]
+
+    def find_best_match(self, ticket_text: str, category: str = None,
+                         min_score: float = AUTO_RESOLVE_MIN_SCORE) -> dict | None:
+        """
+        TF-IDF cosine similarity search (same technique as the GRC Co-Pilot's
+        policy matching) for the single closest-matching prior resolution.
+        Restricted to the same category so a Governance resolution can never
+        auto-resolve an Attack Security incident. Returns None below
+        `min_score`, so an incident with no confident precedent still falls
+        through to normal human review.
+        """
+        if not ticket_text or not ticket_text.strip():
+            return None
+
+        conn = self._connect()
+        try:
+            rows = conn.execute("SELECT * FROM life_documents ORDER BY id DESC").fetchall()
+        finally:
+            conn.close()
+
+        candidates = [self._row_to_dict(r) for r in rows]
+        if category:
+            candidates = [c for c in candidates if c["category"] == category]
+        if not candidates:
+            return None
+
+        documents = [c["ticket_title"] for c in candidates]
+        vectorizer = TfidfVectorizer(lowercase=True, stop_words="english", ngram_range=(1, 1))
+        matrix = vectorizer.fit_transform(documents + [ticket_text])
+        query_vector = matrix[-1]
+        doc_vectors = matrix[:-1]
+        similarities = cosine_similarity(query_vector, doc_vectors)[0]
+
+        best_idx = int(similarities.argmax())
+        best_score = float(similarities[best_idx])
+        if best_score < min_score:
+            return None
+
+        match = dict(candidates[best_idx])
+        match["match_score"] = round(best_score, 4)
+        return match
 
     def get_by_ticket_id(self, ticket_id: str) -> dict | None:
         conn = self._connect()

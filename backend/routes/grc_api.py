@@ -13,6 +13,7 @@ from engine.audit_log import get_audit_log_store
 from engine.auth import roles_required
 from engine.policy_store import get_policy_store
 from engine.rag_copilot import extract_text_from_upload, get_copilot
+from engine.score_history import get_score_history_store
 
 grc_bp = Blueprint("grc_api", __name__, url_prefix="/api/v1")
 
@@ -150,6 +151,26 @@ def compliance_scoreboard():
     copilot = get_copilot()
     score = copilot.compliance_score()
     return jsonify({"scoreboard": score}), 200
+
+
+@grc_bp.route("/compliance-scoreboard/frameworks", methods=["GET"])
+@roles_required("governance", "ciso", "auditor")
+def compliance_scoreboard_frameworks():
+    """
+    Per-framework Compliance Scoreboard breakdown (ISO 27001, GDPR, SOC 2,
+    NIST CSF, PCI-DSS, NDPR): the policies determine each score, the
+    framework provides the benchmark control count. Also records today's
+    snapshot and returns each framework's trend since 30 days ago.
+    """
+    copilot = get_copilot()
+    frameworks = copilot.all_framework_scores()
+
+    history = get_score_history_store(current_app.config["SCORE_HISTORY_STORE_PATH"])
+    history.record_snapshot({f["key"]: f["percent"] for f in frameworks})
+    for f in frameworks:
+        f["trend_pct"] = history.trend_since(30, f["key"], f["percent"])
+
+    return jsonify({"frameworks": frameworks}), 200
 
 
 @grc_bp.route("/grc-query/history", methods=["GET"])

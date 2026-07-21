@@ -176,6 +176,22 @@ class VendorMonitor:
             self._write_budget(budget)
         return self._enrich_budget(budget)
 
+    def remove_budget_item(self, item_id: str) -> dict | None:
+        """Removes a mistakenly-added budget line item and credits its amount
+        back to the balance by decreasing 'spent'. Returns None if the item
+        doesn't exist, so the caller can 404 instead of returning a
+        no-op success."""
+        with _lock:
+            budget = self._read_budget()
+            items = budget.get("items", [])
+            item = next((i for i in items if i["id"] == item_id), None)
+            if item is None:
+                return None
+            budget["items"] = [i for i in items if i["id"] != item_id]
+            budget["spent"] = max(float(budget.get("spent") or 0) - float(item["amount"]), 0)
+            self._write_budget(budget)
+        return self._enrich_budget(budget)
+
     def add_license(self, name: str, vendor_name: str, expiry_date: str, annual_cost: float) -> dict:
         """Adds a new license/vendor entry and debits its cost from the
         budget balance as a 'License Tracking' budget item."""

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { API_BASE_URL, saveSession, getDefaultPageForRole, ROLE_LABELS } from "../../lib/auth";
 
 const DEMO_ACCOUNTS = [
@@ -15,7 +14,6 @@ const DEMO_ACCOUNTS = [
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -36,7 +34,11 @@ export default function LoginPage() {
         throw new Error(data.error || "Login failed.");
       }
       saveSession(data.token, data.user);
-      router.push(getDefaultPageForRole(data.user.role));
+      // Hard navigation (not router.push): the destination route may already be
+      // cached client-side from a previous session under a different account,
+      // and auth state lives in localStorage, which the router cache can't see.
+      // A full navigation guarantees every component remounts against the new session.
+      window.location.href = getDefaultPageForRole(data.user.role);
     } catch (err) {
       setError(err.message);
     } finally {

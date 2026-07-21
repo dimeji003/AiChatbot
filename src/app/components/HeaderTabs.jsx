@@ -1,33 +1,108 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BellIcon } from "@heroicons/react/24/outline";
 import { getUser, PAGE_ACCESS, authFetch } from "../../lib/auth";
+import { formatUtcPlus1 } from "../../lib/time";
 
 const POLL_INTERVAL_MS = 15000;
+const TEAM_ROLES = ["governance", "defense", "attack_security", "service_desk_officer", "ciso"];
+const OPEN_STATUSES = ["PENDING_REVIEW", "ONGOING"];
+
+function seenStorageKey(userId) {
+  return `notif_seen_${userId}`;
+}
+
+function loadSeen(userId) {
+  if (typeof window === "undefined") return { tickets: [], nudges: [] };
+  try {
+    const raw = localStorage.getItem(seenStorageKey(userId));
+    return raw ? JSON.parse(raw) : { tickets: [], nudges: [] };
+  } catch {
+    return { tickets: [], nudges: [] };
+  }
+}
+
+function saveSeen(userId, seen) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(seenStorageKey(userId), JSON.stringify(seen));
+}
 
 /**
- * Backed by GET/POST /api/v1/notifications[/ack]: unseen closed-ticket
- * notifications for the current user (any role — a request they submitted
- * was resolved). Nudges and new-ticket activity for service teams already
- * surface inline on the Service Desk/Service Teams dashboards themselves.
+ * Team-facing bell: alerts governance/defense/attack_security/service_desk_officer/ciso
+ * to new requests and nudges, derived from GET /api/v1/tickets (already scoped
+ * server-side per role) rather than the personal "your ticket was resolved"
+ * /api/v1/notifications endpoint — that one is for the "user" role only, and
+ * wiring the team bell to it made it wrongly fire on unrelated actions like
+ * approving a resolution.
  */
-function NotificationBell({ role }) {
-  const [notifications, setNotifications] = useState([]);
+function TeamNotificationBell({ user }) {
+  const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
+  const seenRef = useRef(null);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!role) return;
+    if (!user || !TEAM_ROLES.includes(user.role)) return;
 
+    seenRef.current = loadSeen(user.id);
+    initializedRef.current = false;
     let cancelled = false;
+
     const poll = async () => {
       try {
-        const response = await authFetch("/api/v1/notifications");
+        const response = await authFetch("/api/v1/tickets");
         const data = await response.json();
         if (!response.ok || cancelled) return;
-        setNotifications(data.notifications || []);
+
+        const tickets = data.tickets || [];
+        const seen = seenRef.current;
+        const seenTickets = new Set(seen.tickets);
+        const seenNudges = new Set(seen.nudges);
+
+        const newItems = [];
+        for (const t of tickets) {
+          if (OPEN_STATUSES.includes(t.status) && !seenTickets.has(t.ticket_id)) {
+            newItems.push({
+              key: `ticket:${t.ticket_id}`,
+              kind: "request",
+              ticket_id: t.ticket_id,
+              text: t.clean_text,
+              timestamp: t.created_at,
+            });
+          }
+          for (const nudge of t.nudges || []) {
+            const nudgeKey = `${t.ticket_id}:${nudge.timestamp}`;
+            if (!seenNudges.has(nudgeKey)) {
+              newItems.push({
+                key: `nudge:${nudgeKey}`,
+                kind: "nudge",
+                ticket_id: t.ticket_id,
+                text: `${nudge.by}: ${nudge.message}`,
+                timestamp: nudge.timestamp,
+              });
+            }
+          }
+        }
+
+        if (!initializedRef.current) {
+          // First poll after login/reload: seed the seen-set with everything
+          // currently open so we only alert on genuinely new activity from
+          // here on, instead of dumping the whole backlog as "unread".
+          initializedRef.current = true;
+          const seededTickets = tickets.filter((t) => OPEN_STATUSES.includes(t.status)).map((t) => t.ticket_id);
+          const seededNudges = tickets.flatMap((t) => (t.nudges || []).map((n) => `${t.ticket_id}:${n.timestamp}`));
+          seenRef.current = { tickets: seededTickets, nudges: seededNudges };
+          saveSeen(user.id, seenRef.current);
+          setItems([]);
+          return;
+        }
+
+        if (newItems.length > 0) {
+          setItems((prev) => [...newItems, ...prev]);
+        }
       } catch {
         // Notifications are non-critical; a failed poll just leaves the badge stale.
       }
@@ -39,23 +114,22 @@ function NotificationBell({ role }) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [role]);
+  }, [user]);
 
-  const ack = async (ticketId) => {
-    setNotifications((prev) => prev.filter((n) => n.ticket_id !== ticketId));
-    try {
-      await authFetch("/api/v1/notifications/ack", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticket_id: ticketId }),
-      });
-    } catch {
-      // Non-critical; badge state already updated optimistically.
+  const dismiss = (item) => {
+    setItems((prev) => prev.filter((i) => i.key !== item.key));
+    const seen = seenRef.current || { tickets: [], nudges: [] };
+    if (item.kind === "request") {
+      seenRef.current = { ...seen, tickets: [...seen.tickets, item.ticket_id] };
+    } else {
+      const nudgeKey = item.key.replace("nudge:", "");
+      seenRef.current = { ...seen, nudges: [...seen.nudges, nudgeKey] };
     }
+    saveSeen(user.id, seenRef.current);
   };
 
-  if (!role) return null;
-  const unreadCount = notifications.length;
+  if (!user || !TEAM_ROLES.includes(user.role)) return null;
+  const unreadCount = items.length;
 
   return (
     <div className="relative">
@@ -77,22 +151,25 @@ function NotificationBell({ role }) {
           <div className="p-3 border-b border-slate-100">
             <p className="text-sm font-bold text-slate-800">Notifications</p>
           </div>
-          {notifications.length === 0 ? (
+          {items.length === 0 ? (
             <p className="p-4 text-xs text-slate-400 font-medium">No new notifications.</p>
           ) : (
-            notifications.map((n) => (
+            items.map((item) => (
               <button
-                key={n.ticket_id}
-                onClick={() => ack(n.ticket_id)}
+                key={item.key}
+                onClick={() => dismiss(item)}
                 className="w-full text-left p-3 border-b border-slate-50 hover:bg-slate-50 transition"
               >
-                <p className="text-xs text-slate-700 font-medium">
-                  Your request {n.ticket_id} was resolved.
+                <p className="text-xs font-bold text-slate-700">
+                  {item.kind === "request" ? `New request ${item.ticket_id}` : `Nudge — ${item.ticket_id}`}
                 </p>
-                {n.clean_text && (
+                {item.text && (
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    {n.clean_text.slice(0, 80)}{n.clean_text.length > 80 ? "…" : ""}
+                    {item.text.slice(0, 90)}{item.text.length > 90 ? "…" : ""}
                   </p>
+                )}
+                {item.timestamp && (
+                  <p className="text-[10px] text-slate-400 mt-0.5">{formatUtcPlus1(item.timestamp)}</p>
                 )}
               </button>
             ))
@@ -105,15 +182,16 @@ function NotificationBell({ role }) {
 
 export default function HeaderTabs() {
   const pathname = usePathname();
-  const [role, setRole] = useState(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     // Reads localStorage on mount; not a synchronous derived-state update.
-    const user = getUser();
+    const stored = getUser();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRole(user?.role || null);
+    setUser(stored || null);
   }, []);
 
+  const role = user?.role || null;
   const isChatActive = pathname === "/";
   const isGrcActive = pathname === "/grcquery";
   const canSeeGrc = role && PAGE_ACCESS["/grcquery"].includes(role);
@@ -140,7 +218,7 @@ export default function HeaderTabs() {
           </Link>
         )}
       </div>
-      <NotificationBell role={role} />
+      <TeamNotificationBell user={user} />
     </div>
   );
 }

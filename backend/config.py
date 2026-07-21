@@ -23,6 +23,7 @@ class Config:
     SLA_CONFIG_STORE_PATH = os.path.join(DATA_DIR, "sla_config.json")
     EXPLOIT_PLAYBOOK_DB_PATH = os.path.join(DATA_DIR, "exploit_playbook.sqlite3")
     PENTEST_SCHEDULE_STORE_PATH = os.path.join(DATA_DIR, "pentest_schedule.json")
+    SCORE_HISTORY_STORE_PATH = os.path.join(DATA_DIR, "score_history.json")
 
     TICKET_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.55
 

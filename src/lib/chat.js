@@ -1,8 +1,15 @@
 "use client";
 
-import { authFetch } from "./auth";
+import { authFetch, getUser } from "./auth";
 
-const CHAT_HISTORY_KEY = "chat_history";
+const CHAT_HISTORY_KEY_PREFIX = "chat_history_";
+
+function chatHistoryKey() {
+  // Scoped per logged-in user so switching accounts on the same browser
+  // never shows the previous user's transcript.
+  const user = getUser();
+  return `${CHAT_HISTORY_KEY_PREFIX}${user?.id || "anonymous"}`;
+}
 
 /**
  * Sends a chat message to the backend. The desk classifies each message as
@@ -30,7 +37,11 @@ export async function sendChatMessage(text) {
     const parts = [
       `Logged as ${t.ticket_id} (${t.category || "Unclassified"}${t.incident_type ? ` — ${t.incident_type}` : ""}, ${t.urgency || "Medium"} urgency). The SLA clock has started.`,
     ];
-    if (t.needs_human_review) {
+    if (t.auto_resolved) {
+      parts.push(
+        `This matches a previous resolution closely enough (${Math.round((t.auto_resolved_confidence || 0) * 100)}% confidence) that it's been auto-resolved — no human review needed.`
+      );
+    } else if (t.needs_human_review) {
       parts.push("This has been flagged for human review and escalated to the team.");
     }
     if (data.action_script?.title) {
@@ -49,7 +60,7 @@ export async function sendChatMessage(text) {
 export function loadChatHistory() {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    const raw = localStorage.getItem(chatHistoryKey());
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -58,5 +69,5 @@ export function loadChatHistory() {
 
 export function saveChatHistory(messages) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+  localStorage.setItem(chatHistoryKey(), JSON.stringify(messages));
 }

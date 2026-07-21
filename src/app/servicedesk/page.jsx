@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bars3Icon, ArrowRightIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, ArrowRightIcon, MicrophoneIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Sidebar from '../components/Sidebar';
 import HeaderTabs from '../components/HeaderTabs';
 import { authFetch, useAuthGuard } from '../../lib/auth';
@@ -89,6 +89,7 @@ export default function ServiceDeskDashboard() {
   const [itemForm, setItemForm] = useState({ category: "License Tracking", description: "", amount: "" });
   const [isSavingItem, setIsSavingItem] = useState(false);
   const [itemError, setItemError] = useState(null);
+  const [removingItemId, setRemovingItemId] = useState(null);
 
   const [showLicenseForm, setShowLicenseForm] = useState(false);
   const [licenseForm, setLicenseForm] = useState({ name: "", vendor_name: "", expiry_date: "", annual_cost: "" });
@@ -302,6 +303,20 @@ export default function ServiceDeskDashboard() {
       setItemError(err.message);
     } finally {
       setIsSavingItem(false);
+    }
+  };
+
+  const removeBudgetItem = async (itemId) => {
+    setRemovingItemId(itemId);
+    try {
+      const response = await authFetch(`/api/v1/budget/items/${itemId}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to remove budget item.");
+      setVendorData((prev) => ({ ...(prev || {}), budget: data.budget }));
+    } catch (err) {
+      setItemError(err.message);
+    } finally {
+      setRemovingItemId(null);
     }
   };
 
@@ -703,11 +718,25 @@ export default function ServiceDeskDashboard() {
                         </button>
                       </div>
                     )}
+                    {!showItemForm && itemError && (
+                      <p className="text-red-600 text-[11px] font-semibold">{itemError}</p>
+                    )}
                     <div className="max-h-32 overflow-y-auto space-y-1">
                       {(vendorData.budget.items || []).slice().reverse().map((item) => (
-                        <div key={item.id} className="flex items-center justify-between text-[11px] text-emerald-800">
-                          <span>{item.category}{item.description ? ` — ${item.description}` : ""}</span>
-                          <span className="font-bold">${item.amount.toLocaleString()}</span>
+                        <div key={item.id} className="flex items-center justify-between gap-2 text-[11px] text-emerald-800">
+                          <span className="truncate">{item.category}{item.description ? ` — ${item.description}` : ""}</span>
+                          <span className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="font-bold">${item.amount.toLocaleString()}</span>
+                            <button
+                              onClick={() => removeBudgetItem(item.id)}
+                              disabled={removingItemId === item.id}
+                              className="p-0.5 rounded hover:bg-red-50 text-emerald-400 hover:text-red-600 transition disabled:opacity-50"
+                              aria-label="Remove budget item"
+                              title="Remove this item (mistake correction)"
+                            >
+                              <TrashIcon className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
                         </div>
                       ))}
                     </div>

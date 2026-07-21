@@ -13,6 +13,8 @@ import {
   CompassIcon
 } from '@heroicons/react/24/outline';
 import Sidebar from "./components/Sidebar";
+import HeaderTabs from "./components/HeaderTabs";
+import { useAuthGuard } from "../lib/auth";
 import { useSpeechToText, transcribeAudioFile } from "../lib/speech";
 import { sendChatMessage, loadChatHistory, saveChatHistory } from "../lib/chat";
 
@@ -30,6 +32,7 @@ function formatTime(isoTimestamp) {
 }
 
 export default function SecuritySOCDesk() {
+  const { user, checked } = useAuthGuard();
   const [message, setMessage] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
@@ -97,11 +100,13 @@ export default function SecuritySOCDesk() {
     }
   };
 
+  if (!checked) return null;
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col antialiased selection:bg-blue-500 selection:text-white">
       <Sidebar isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}/>
-      
+
       {/* TOP NAVIGATION BAR */}
       <header className="h-16 border-b border-slate-200 bg-white px-6 flex items-center justify-between sticky top-0 z-50">
         {/* Left Logo Section */}
@@ -110,23 +115,15 @@ export default function SecuritySOCDesk() {
   <Bars3Icon className="w-7 h-7 text-slate-700" />
 </button>
 
-        {/* Center Navigation Toggle */}
-        <div className="bg-slate-100 p-1 rounded-full flex items-center shadow-inner">
-          <button className="px-5 py-1.5 bg-blue-600 text-white font-medium text-sm rounded-full shadow-sm transition-all hover:bg-blue-700">
-            AI Chat Bot
-          </button>
-          <button className="px-5 py-1.5 text-slate-600 hover:text-slate-900 font-medium text-sm rounded-full transition-colors">
-            GRC Co-Pilot (Auditing)
-          </button>
-        </div>
+        <HeaderTabs />
 
         {/* Right User Profile */}
         <div className="flex items-center gap-3 cursor-pointer group">
           <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-sm shadow-sm ring-2 ring-transparent group-hover:ring-blue-100 transition-all">
-            LT
+            {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
           </div>
           <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors hidden sm:inline">
-            Lawal Tumininu
+            {user.name}
           </span>
         </div>
       </header>

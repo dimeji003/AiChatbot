@@ -318,6 +318,27 @@ def add_budget_item():
     return jsonify({"budget": budget}), 201
 
 
+@workflow_bp.route("/budget/items/<item_id>", methods=["DELETE"])
+@roles_required("service_desk_officer", "ciso")
+def remove_budget_item(item_id):
+    """Removes a mistakenly-added budget line item and credits its amount
+    back to the balance, for correcting data-entry mistakes."""
+    monitor = get_vendor_monitor(current_app.config["VENDOR_STORE_PATH"])
+    budget = monitor.remove_budget_item(item_id)
+    if budget is None:
+        return jsonify({"error": f"Budget item {item_id} not found."}), 404
+
+    audit_log = get_audit_log_store(current_app.config["AUDIT_LOG_DB_PATH"])
+    audit_log.record(
+        actor=request.current_user,
+        action_type="budget_item_removed",
+        category="budget",
+        summary=f"Removed budget item {item_id}",
+    )
+
+    return jsonify({"budget": budget}), 200
+
+
 @workflow_bp.route("/vendors", methods=["POST"])
 @roles_required("service_desk_officer", "ciso")
 def add_license():

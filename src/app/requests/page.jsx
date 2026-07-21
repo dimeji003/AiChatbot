@@ -94,7 +94,15 @@ export default function RequestsPage() {
     }
     setExpandedId(reqId);
 
-    if (lifeDocs[reqId] || lifeDocErrors[reqId]) return;
+    // Only skip refetching once we've actually loaded the document — a prior
+    // "not found yet" error must not stick around, since the team may finish
+    // updating the Life Document after the requester's first look.
+    if (lifeDocs[reqId]) return;
+    setLifeDocErrors((prev) => {
+      const next = { ...prev };
+      delete next[reqId];
+      return next;
+    });
 
     try {
       const response = await authFetch(`/api/v1/life-doc/${reqId}`);
@@ -244,6 +252,11 @@ export default function RequestsPage() {
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${TEAM_STYLES[req.category] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                             {req.category || "Unclassified"}
                           </span>
+                          {req.auto_resolved && (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-100">
+                              🤖 Auto-resolved
+                            </span>
+                          )}
                         </div>
 
                         <div className="mt-3 space-y-1 text-xs text-slate-600">
